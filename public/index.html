@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>twitter</title>
+    <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.0.2/css/bootstrap.min.css'>
+    <script defer src="/__/firebase/9.12.0/firebase-app-compat.js"></script>
+
+    <script defer src="/__/firebase/9.12.0/firebase-auth-compat.js"></script>
+    <script defer src="/__/firebase/9.12.0/firebase-database-compat.js"></script>
+    <script defer src="/__/firebase/9.12.0/firebase-firestore-compat.js"></script>
+    <script defer src="/__/firebase/9.12.0/firebase-storage-compat.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.1.min.js" integrity="sha256-o88AwQnZB+VDvE9tvIXrMQaPlFFSUTR+nldQm1LuPXQ="crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <script defer src="/__/firebase/init.js?useEmulator=true"></script>
+  </head>
+  <body>
+    <div id = "main"></div>
+    <div id = "alltweets"></div>
+    <script type = "module">
+      import * as rtdb from "https://www.gstatic.com/firebasejs/9.9.4/firebase-database.js";
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/9.9.4/firebase-app.js"
+      const firebaseConfig = {
+      apiKey: "AIzaSyBtZxrGHqq9aSsRhqXtM1koljIXUeMTvq0",
+      authDomain: "twitter-database-2438e.firebaseapp.com",
+      databaseURL: "https://twitter-database-2438e-default-rtdb.firebaseio.com",
+      projectId: "twitter-database-2438e",
+      storageBucket: "twitter-database-2438e.appspot.com",
+      messagingSenderId: "658967941023",
+      appId: "1:658967941023:web:81891abc6a3ea49791f7aa",
+      measurementId: "G-24VYSZX0J3"
+    };
+
+      const app = initializeApp(firebaseConfig);
+      let db = rtdb.getDatabase(app);
+      let tweetRef = rtdb.ref(db, "/tweets");
+      let logged_in = false;
+      let user_data = null;
+      $(document).ready(function(){
+        logged_in = false;
+        firebase.auth().onAuthStateChanged((user)=>{
+        if (user){
+          user_data  = user
+          logged_in = true;
+          let page = document.location.pathname.split("/")[1];
+          switch (page){
+            case ("home"):
+              renderHome();
+              return;
+            case ("profile"):
+               renderProfile();
+               return;
+            case ("users"):
+                renderUsers();
+                return;
+            default:
+                window.location.replace("home");
+                return;
+          }
+        }
+        if(!logged_in){
+          renderHome();
+        }
+      });
+    });
+      let renderHome = () =>{
+        //If user is logged in, renders tweets
+        //If not, renders a log in screen
+        if (logged_in){
+          $("#main").html(`
+            <nav class="navbar navbar-expand-lg sticky-top navbar-light bg-light">
+    <div class="container-fluid">
+      <a class="navbar-brand">bad twitter</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarScroll" aria-controls="navbarScroll" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarScroll">
+        <ul class="navbar-nav me-auto my-2 my-lg-0 navbar-nav-scroll" style="--bs-scroll-height: 100px;">
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" href="home">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" href="profile" tabindex="-1" aria-disabled="true">Profile</a>
+          </li>
+          <li class = "nav-item">
+            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#makeTweet" id="makeTweetButton">Make a Tweet</button>
+          </li>
+          <li class = "nav-item">
+            <button type="button" class="btn btn-danger" id="logOutButton">Log out</button>
+          </li>
+        </ul>
+        <form class="d-flex">
+          <input class="form-control me-2" type="search" placeholder="Search Users" id="userSearch" aria-label="Search">
+          <button type="button" class="btn btn-primary" id="userSubmit">Search</button>
+        </form>
+      </div>
+    </div>
+</nav>
+          <h1 style ="text-align: center"> Home Page </h1><br>
+          `);
+          $("#main").append(`<div class="modal fade" id="makeTweet" tabindex="-1" role="dialog" aria-labelledby="makeTweetLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="makeTweetLabel">New tweet</h5>
+                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div>
+                <div class="modal-body">
+                  <form>
+                    <div class="form-group">
+                      <label for="message-text" class="col-form-label">Message:</label>
+                      <textarea class="form-control" id="tweet-text"></textarea>
+                    </div>
+                  </form>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                  <button type="button" class="btn btn-primary" id="submitTweet">Post</button>
+                </div>
+              </div>
+            </div>
+          </div>`)
+          $("#submitTweet").on("click", (evt)=>{
+            if(firebase.auth().currentUser.displayName == null){
+              alert("Your profile has not been made. Please click the profile tab on the home screen.");
+            }
+            else{
+            let message = $("#tweet-text").val();
+            let tweet_poster = firebase.auth().currentUser.displayName;
+            let pfpRef = rtdb.ref(db, "/users/" + tweet_poster + "/pfp");
+            let new_tweet = {}
+            rtdb.get(pfpRef).then((tweet_pfp)=>{
+              //there's simply no way this generates the same number twice right..i should make a check for it
+              let tweet_id = Math.floor(Math.random() * (9999999) + 1); 
+              new_tweet = {
+                content: message,
+                likes: 0,
+                retweets: 0,
+                pfp: tweet_pfp.val(),
+                username: tweet_poster
+              };
+              let newTweetRef = rtdb.ref(db, "tweets/" + tweet_id);
+              //push to general tweets db
+              rtdb.update(newTweetRef, new_tweet);
+              //then, add it to their tweets db
+              let userTweetRef = rtdb.ref(db, "/users/" + tweet_poster + "/tweets");
+              rtdb.get(userTweetRef).then((ss)=>{
+                let tweets = {};
+                if (ss.exists()){
+                  tweets = ss.val();
+                }
+                tweets = {...tweets, [tweet_id]: new_tweet};
+                console.log(tweets);
+                rtdb.set(userTweetRef, tweets);
+            });
+          });
+        }
+        });
+          $("#logOutButton").on("click", (evt)=>{
+            firebase.auth().signOut();
+            alert("logged out");
+            window.location.replace("home");
+
+          });
+          $("#userSubmit").on("click", (evt)=>{
+          let username = $("#userSearch").val();
+          window.location.replace(`users/${username}`)
+        });
+          rtdb.onChildAdded(tweetRef, ss=>{
+          let tObj = ss.val();
+          let key = ss.key;
+          renderTweet(tObj, key);
+        });
+          return;
+        }
+
+        $("#main").html(`
+        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#logInModal" data-mode ="Login">Login</button>
+        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#logInModal" data-mode ="Sign Up">Sign Up</button>
+        <div class="modal fade" id="logInModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel"> Enter email and password below.</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+              <div class="modal-body">
+                <form>
+                  <div class="form-group">
+                    <label class="col-form-label">Email</label>
+                    <input type="text" class="form-control" id="email">
+                  </div>
+                  <div class="form-group">
+                    <label class="col-form-label">Password</label>
+                    <input type="text" class="form-control" id="password">
+                  </div>
+                </form>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id = "logInSubmit">Submit</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        `);
+        let mode = "nothin"; 
+        $("#logInModal").on("show.bs.modal", (event)=>{
+          var button = $(event.relatedTarget);
+          mode = button.data('mode');
+        });
+        $("#logInSubmit").on("click", (event)=>{
+          $('#logInModal').modal('hide');
+          if (mode == "Login"){
+            let email = $("#email").val();
+            let password = $("#password").val();
+            firebase.auth().signInWithEmailAndPassword(email, password).catch((error) =>{
+            alert("Incorrect Email + Password.");
+          });
+          }
+          if (mode == "Sign Up"){
+            let email = $("#email").val();
+            let password = $("#password").val();
+            firebase.auth().createUserWithEmailAndPassword(email, password).catch((error)=>{
+              alert("Account not made. Make sure you are using a valid email address that does not already have an account.");
+            })        
+          }
+        });        
+      };
+      let renderUsers = ()  => {
+        let paths = document.location.pathname.split("/");
+        //paths[2] is the username
+        let userRef = rtdb.ref(db, "/users/" + paths[2]);
+        rtdb.get(userRef).then((ss) => {
+          if (ss.exists()) {
+            let userTweetRef =  rtdb.ref(db, `/users/${paths[2]}/tweets`);
+            $("#main").append(`
+              <img src="${ss.val().pfp}" height="100" width="100" class="img-fluid rounded-start" alt="...">
+              <br><p> ${ss.val().description}<p>
+              <br><p>Following: ${ss.val().following} Followers: ${ss.val().followers}</p>
+              `);
+            rtdb.onChildAdded(userTweetRef, tweet=>{
+              let tObj = tweet.val();
+              let key = tweet.key;
+              renderTweet(tObj, key);
+            });
+          } else {
+            alert("User not found!");
+          }
+        }).catch((error) => {
+          console.error(error);
+        });
+          $("#main").append(`
+            <nav class="navbar navbar-expand-lg sticky-top navbar-light bg-light">
+    <div class="container-fluid">
+      <a class="navbar-brand">bad twitter</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarScroll" aria-controls="navbarScroll" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarScroll">
+        <ul class="navbar-nav me-auto my-2 my-lg-0 navbar-nav-scroll" style="--bs-scroll-height: 100px;">
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" href="../home">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" href="../../profile" tabindex="-1" aria-disabled="true">Profile</a>
+          </li>
+          <li class = "nav-item">
+            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#makeTweet" id="makeTweetButton">Make a Tweet</button>
+          </li>
+          <button type="button" class="btn btn-danger" id="logOutButton">Log out</button>
+        </ul>
+        <form class="d-flex">
+          <input class="form-control me-2" type="search" placeholder="Search User" id = "userSearch" aria-label="Search">
+          <button type="button" class="btn btn-primary" id="userSubmit">Search</button>
+        </form>
+      </div>
+    </div>
+</nav>
+        <h1> ${paths[2]}'s Profile </h1>
+      `);
+          $("#main").append(`<div class="modal fade" id="makeTweet" tabindex="-1" role="dialog" aria-labelledby="makeTweetLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="makeTweetLabel">New tweet</h5>
+                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div>
+                <div class="modal-body">
+                  <form>
+                    <div class="form-group">
+                      <label for="message-text" class="col-form-label">Message:</label>
+                      <textarea class="form-control" id="tweet-text"></textarea>
+                    </div>
+                  </form>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                  <button type="button" class="btn btn-primary" id="submitTweet">Post</button>
+                </div>
+              </div>
+            </div>
+          </div>`)
+          $("#submitTweet").on("click", (evt)=>{
+            let message = $("#tweet-text").val();
+            let tweet_poster = firebase.auth().currentUser.displayName;
+            let pfpRef = rtdb.ref(db, "/users/" + tweet_poster + "/pfp");
+            let new_tweet = {}
+            rtdb.get(pfpRef).then((tweet_pfp)=>{
+              //there's simply no way this generates the same number twice right..i should make a check for it
+              let tweet_id = Math.floor(Math.random() * (9999999) + 1); 
+              new_tweet = {
+                content: message,
+                likes: 0,
+                retweets: 0,
+                pfp: tweet_pfp.val(),
+                username: tweet_poster
+              };
+              let newTweetRef = rtdb.ref(db, "tweets/" + tweet_id);
+              //push to general tweets db
+              rtdb.update(newTweetRef, new_tweet);
+              //then, add it to their tweets db
+              let userTweetRef = rtdb.ref(db, "/users/" + tweet_poster + "/tweets");
+              rtdb.get(userTweetRef).then((ss)=>{
+                let tweets = {};
+                if (ss.exists()){
+                  tweets = ss.val();
+                }
+                tweets = {...tweets, [tweet_id]: new_tweet};
+                console.log(tweets);
+                rtdb.set(userTweetRef, tweets);
+            });
+          });
+        });
+      if((logged_in) && (firebase.auth().currentUser.displayName == paths[2])){
+        //this is their account
+        $("#main").append(`
+        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#editProfileModal" id="editProfile">Edit Profile</button>
+        <button type="button" class="btn btn-danger" id="deleteProfile">Delete Account</button>
+        <div class="modal fade" id="editProfileModal" tabindex="-1" role="dialog" aria-labelledby="editProfileLabel" aria-hidden="true">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Edit profile</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+              <div class="modal-body">
+                <form>
+                  <div class="form-group">
+                    <label for="message-text" class="col-form-label" id=>Description:</label>
+                    <textarea class="form-control" id="description"></textarea>
+                  </div>
+                  <div class="form-group">
+                    <label for="formFile" class="form-label">Profile Picture</label>
+                    <input class="form-control" type="file" id="fileupload" accept="image/png, image/jpeg" id="formFile">
+                  </div>
+                </form>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="changeProfile">Save Changes</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        `);
+      }
+      $("#changeProfile").on("click", (evt)=>{
+        var storageRef = firebase.storage().ref();
+        const fileReader = new FileReader();        
+        var myFile = $('#fileupload').prop('files')[0];
+
+        fileReader.readAsArrayBuffer(myFile);
+        fileReader.addEventListener("load", async (evt)=>{
+          let theFileData = fileReader.result;
+          let storageDest = storageRef.child(myFile.name);
+          storageDest.put(theFileData, {
+        contentType: myFile.type,
+      }).then(ss=>{
+            ss.ref.getDownloadURL().then((theURL)=>{
+              rtdb.update(userRef, {
+                description: $("#description").val(),
+                pfp: theURL,
+              });
+              alert("Profile Updated!");
+              window.location.replace(`/users/${paths[2]}`);
+            })
+          });
+        });
+      });
+      $("#deleteProfile").on("click", (evt)=>{
+        deleteAccount(userRef);
+      });
+      $("#userSubmit").on("click", (evt)=>{
+          let username = $("#userSearch").val();
+          window.location.replace(`${username}`)
+      });
+      $("#logOutButton").on("click", (evt)=>{
+            firebase.auth().signOut();
+            alert("logged out");
+            window.location.replace("../home");
+      });
+      };
+      let deleteAccount = (userRef) =>{
+        let password = prompt("Enter your password.");
+        const credential = firebase.auth.EmailAuthProvider.credential(
+            firebase.auth().currentUser.email,
+            password
+        );
+         firebase.auth().currentUser.reauthenticateWithCredential(credential).then(()=>{
+          firebase.auth().currentUser.delete().then(()=>{
+            rtdb.remove(userRef);
+            alert("Account deleted.");
+            window.location.replace("../home");
+          }).catch((error)=>{
+            console.log(error);
+          })
+        });
+      }
+      let setUpAccount = (user) => {
+        let username = prompt("You do not have a username set for this account. Please enter your username here:");
+          //make sure the account doesnt already exist
+          let userRef = rtdb.ref(db, "/users/" + username.replace(/\s/g, ''));
+          rtdb.get(userRef).then((ss) => {
+            if (ss.exists()){
+              alert("User already exists. Choose a different username.");
+              setUpAccount(); 
+            }
+            else{
+              let userRef = rtdb.ref(db, "/users/" + username);
+              rtdb.set(userRef, {
+                description: "Hello im new :)",
+                followers: 0,
+                following: 0,
+                pfp: "https://pm1.narvii.com/5825/8c5ce7f417bbf8f1b2734988488e93a9ee5148b9_hq.jpg",
+                tweets: []
+              });
+              user.updateProfile({
+                displayName: username,
+                photoURL: null
+              }).then(()=>{
+                alert("Account made!");
+                renderProfile();
+              }) 
+              
+            }
+          });
+      }
+      let renderProfile = () => {
+        let user = firebase.auth().currentUser;
+        if (logged_in){
+          if (user.displayName == null){
+            setUpAccount(user);
+          }
+          else{
+            window.location.replace(`users/${user.displayName}`);
+          }
+        }
+      }
+      let renderTweet = (tObj, key) => {
+        $("#alltweets").prepend(`
+        <div class="card" style="max-width: 800px; margin-left: auto; margin-right:auto;">
+          <div class = "row">
+            <div class = "col-3">
+              <img src="${tObj.pfp}" style="margin-left: 20px; margin-top: 10px; width: 130px; height: 130px" class="img-fluid rounded-circle" alt="profile picture">
+            </div>
+            <div class = "col-8">
+              <h4 class="card-title" style="margin-top: 10px"><a href="/users/${tObj.username}">${tObj.username}</a></h5>
+              <p class="card-text">${tObj.content}</p>
+            </div>
+          <div class = "row">
+            <div id = "like-retweet" style = "text-align: center">
+                <svg xmlns="http://www.w3.org/2000/svg" id = "like_button" data-tweetid="${key}" width="32" height="32" fill="red" class="bi bi-heart-fill" viewBox="0 0 16 16">
+                  <path fill-rule="evenodd" d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314z"/>
+                </svg>
+                <p style="display: inline" id="like-text">${tObj.likes}</p>
+                <svg xmlns="http://www.w3.org/2000/svg" id = "retweet_button" data-tweetid="${key}" width="32" height="32" fill="lime" class="bi bi-repeat" viewBox="0 0 16 16">
+                  <path d="M11 5.466V4H5a4 4 0 0 0-3.584 5.777.5.5 0 1 1-.896.446A5 5 0 0 1 5 3h6V1.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384l-2.36 1.966a.25.25 0 0 1-.41-.192Zm3.81.086a.5.5 0 0 1 .67.225A5 5 0 0 1 11 13H5v1.466a.25.25 0 0 1-.41.192l-2.36-1.966a.25.25 0 0 1 0-.384l2.36-1.966a.25.25 0 0 1 .41.192V12h6a4 4 0 0 0 3.585-5.777.5.5 0 0 1 .225-.67Z"/>
+                </svg>
+                <p style="display: inline" id="retweet-text">${tObj.retweets}</p>
+              </div>
+          </div>
+        </div>`
+      );
+      $("#like_button").on("click", (evt)=>{
+        let tweetID = $(evt.currentTarget).attr("data-tweetid");
+        console.log(evt);
+        let tweetRef = rtdb.ref(db, "/tweets/" + tweetID);
+        let userLikesRef = rtdb.ref(db, "/users/" + user_data.displayName + "/liked_tweets/" + tweetID);
+        rtdb.get(userLikesRef).then((ss)=>{
+          if(ss.val()){
+            console.log("Tweet unliked");
+            rtdb.runTransaction(tweetRef, (tweet)=>{
+              let like = tweet.likes - 1;
+              rtdb.update(tweetRef, {likes: like});
+              rtdb.remove(userLikesRef);
+              $("#like-text").html(`${like}`);
+            });
+          }
+          else{
+            console.log("Tweet liked");
+            rtdb.runTransaction(tweetRef, (tweet)=>{
+              let like = tweet.likes + 1;
+              rtdb.update(tweetRef, {likes: like});
+              rtdb.update(userLikesRef, tweet);
+              $("#like-text").html(`${like}`);
+            });
+          }           
+        });
+      });
+      $("#retweet_button").on("click", (evt)=>{
+        let tweetID = $(evt.currentTarget).attr("data-tweetid");
+        let tweetRef = rtdb.ref(db, "/tweets/" + tweetID);
+        let userRTRef = rtdb.ref(db, "/users/" + user_data.displayName + "/retweets/" + tweetID);
+        rtdb.get(userRTRef).then((ss)=>{
+          if(ss.val()){
+            console.log("Tweet unretweeted");
+            rtdb.runTransaction(tweetRef, (tweet)=>{
+              let retweet = tweet.retweets - 1;
+              rtdb.update(tweetRef, {retweets: retweet});
+              rtdb.remove(userRTRef);
+              $("#retweet-text").html(`${retweet}`);
+            });
+          }
+          else{
+            console.log("Tweet retweeted");
+            rtdb.runTransaction(tweetRef, (tweet)=>{
+              let retweet = tweet.retweets + 1;
+              rtdb.update(tweetRef, {retweets: retweet});
+              rtdb.update(userRTRef, tweet);
+              $("#retweet-text").html(`${retweet}`);
+            });
+          }           
+        });
+      });
+      }
+      
+    </script>    
+  </body>
+</html>
