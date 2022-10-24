@@ -1,0 +1,12 @@
+{
+  "rules": {
+      "tweets": {
+        ".read": "true", 
+    		".write": "auth == null",  
+      },
+      "$rest": {
+        ".read": "true", 
+    		".write": "true",  
+      }
+  }
+}
